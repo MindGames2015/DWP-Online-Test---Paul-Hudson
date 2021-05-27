@@ -1,42 +1,61 @@
 package com.londonusers;
 
+import com.google.gson.JsonObject;
+import com.google.gson.stream.JsonReader;
 import net.sf.geographiclib.Geodesic;
 import net.sf.geographiclib.GeodesicData;
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.JsonProcessingException;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.w3c.dom.ls.LSOutput;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 public class UsersInLondon
 {
-    static int id;
-    String first_name = "";
-    String last_name = "";
-    String email;
-    String ip_address;
-    double latitude;
-    double longitude;
 
+    private static final String USERS_ENDPOINT = "https://bpdts-test-app.herokuapp.com";
+    private static final String USERS_ENDPOINT_PATH = "/city/London/users";
+    private static final String CONTENT_TYPE = "Content-Type";
+    private static final String APPLICATION_JSON = "application/json";
 
-    public static void main(String[] args)
+    
+    public static void main(String[] args) throws IOException, InterruptedException
     {
-        // Using java.net.http.HttpClient
+        // 1. Create a client
         HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder().uri(URI.create("https://bpdts-test-app.herokuapp.com/city/London/users")).build();
+
+        // 2. Create the request
+        HttpRequest request = HttpRequest.newBuilder()
+                .header(CONTENT_TYPE, APPLICATION_JSON)
+                .uri(URI.create(USERS_ENDPOINT + USERS_ENDPOINT_PATH))
+                //.GET(HttpRequest.BodyPublishers.ofString()) // POST
+                .build();
+
+        // 3. Send the request and receive response
+         //HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(HttpResponse::body)
-                .thenApply(UsersInLondon::parse)
-                .join();
+                 .thenApply(HttpResponse::body)
+                 .thenApply(UsersInLondon::parse)
+                 .join();
+
     }
 
-    // Create a list of users who qualify as living in London or within
-    // a 50-mile radius of London
+
+       // Create a list of users who qualify as living in London or within
+       // a 50-mile radius of London
     public static List<User> parse(String responseBody)
     {
         List<User> qualifyingUsers = new ArrayList();
@@ -44,8 +63,9 @@ public class UsersInLondon
         // London Latitude and Longitude coordinates converted into degrees
         // 51 deg 30 min 26 sec N
         double londonLat = 51 + (30 / 60.0) + (26 / 60.0 / 60.0);
-        // 0 deg 7 min 39 sec W
-        double londonLon = 0 + (7 / 60.0) + (39 / 60.0 / 60.0);
+
+        // 0 deg -7 min -39 sec W
+        double londonLon = 0 + (-7 / 60.0) + (-39 / 60.0 / 60.0);
 
         JSONArray usersLondon = new JSONArray((responseBody));
 
@@ -65,7 +85,7 @@ public class UsersInLondon
             double distanceInMeters = result.s12;
             double distanceInMiles = distanceInMeters / 1609.34;
 
-            
+
             if (distanceInMiles <= 50.00)
             {
                 User user = new User();
@@ -87,9 +107,10 @@ public class UsersInLondon
             }
 
         }
-
+        System.out.println(responseBody);
         return qualifyingUsers;
 
-    }
 
+    }
 }
+
